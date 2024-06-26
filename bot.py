@@ -3,12 +3,14 @@ import discord
 import requests
 import datetime
 import json
+import calendar
 
 
 intents = discord.Intents.default()
 client = discord.Client(intents=intents)
 TOKEN = 'token'  # Replace with your bot token
-CHANNEL_ID = [ channel_ids]  # Replace with your channel IDs
+
+CHANNEL_ID = [channel_ids ]  # add your channel IDs here
 
 
 def fetch_upcoming_leetcode_contests():
@@ -103,7 +105,15 @@ def fetch_upcoming_geeksforgeeks_contests():
 @client.event
 async def on_ready():
     print(f'Logged in as {client.user}')
+
     while True:
+        now = datetime.datetime.now()
+        target_datetime = datetime.datetime(year=now.year, month=now.month, day=now.day)
+        if target_datetime.weekday() != calendar.MONDAY or target_datetime.hour < 10:
+            target_datetime += datetime.timedelta(days=(calendar.MONDAY - target_datetime.weekday()) % 7, weeks=(target_datetime.weekday() == calendar.MONDAY and target_datetime.hour < 10))
+        time_difference = target_datetime - now
+        time_difference=time_difference.total_seconds()
+        print(time_difference)
         dict_of_contests = dict()
         channels = []
         for i in CHANNEL_ID:
@@ -114,13 +124,13 @@ async def on_ready():
             codechef_contests = fetch_upcoming_codechef_contests()
             geeksforgeeks_contests = fetch_upcoming_geeksforgeeks_contests()
             upcoming_contests_message = "@everyone \n**Upcoming Coding Contests This Week**\n\n"
-            now = datetime.datetime.now()
+
             if leetcode_contests:
                 upcoming_contests_message += "__LeetCode Contests__\n"
                 for contest in leetcode_contests:
                     start_time = datetime.datetime.fromtimestamp(contest['startTime']).strftime('%Y-%m-%d %H:%M:%S')
                     x = datetime.datetime.fromtimestamp(contest['startTime'])
-                    if (x - now).total_seconds() > 604800:
+                    if (x - now).total_seconds() > time_difference:
                         continue
                     contest_info = f"**Name:** {contest['title']}\n**Start Time:** {start_time}\n**Link:** https://leetcode.com/contest/{contest['titleSlug']}\n"
                     upcoming_contests_message += contest_info + "\n"
@@ -132,7 +142,7 @@ async def on_ready():
                     if "Codeforces Round" in contest['name']:
                         start_time = datetime.datetime.fromtimestamp(contest['startTimeSeconds']).strftime('%Y-%m-%d %H:%M:%S')
                         x = datetime.datetime.fromtimestamp(contest['startTimeSeconds'])
-                        if (x - now).total_seconds() > 604800:
+                        if (x - now).total_seconds() > time_difference:
                             continue
                         contest_info = f"**Name:** {contest['name']}\n**Start Time:** {start_time}\n**Link:** https://codeforces.com/contest/{contest['id']}\n"
                         upcoming_contests_message += contest_info + "\n"
@@ -145,7 +155,7 @@ async def on_ready():
                 for contest in codechef_contests:
                     start_time = datetime.datetime.strptime(contest['contest_start_date'], '%d %b %Y %H:%M:%S').strftime('%Y-%m-%d %H:%M:%S')
                     x = datetime.datetime.strptime(contest['contest_start_date'], '%d %b %Y %H:%M:%S')
-                    if (x - now).total_seconds() > 604800:
+                    if (x - now).total_seconds() > time_difference:
                         continue
                     contest_info = f"**Name:** {contest['contest_name']}\n**Start Time:** {start_time}\n**Link:** https://www.codechef.com/{contest['contest_code']}\n"
                     upcoming_contests_message += contest_info + "\n"
@@ -156,7 +166,7 @@ async def on_ready():
                     if "GFG Weekly" in contest.get('name', ''):
                         start_time = datetime.datetime.strptime(contest.get('start_time', ''), '%Y-%m-%dT%H:%M:%S').strftime('%Y-%m-%d %H:%M:%S')
                         x = datetime.datetime.strptime(contest.get('start_time', ''), '%Y-%m-%dT%H:%M:%S')
-                        if (x - now).total_seconds() > 604800:
+                        if (x - now).total_seconds() > time_difference:
                             continue
                         contest_info = f"**Name:** {contest.get('name', '')}\n**Start Time:** {start_time}\n**Link:** https://practice.geeksforgeeks.org/contest/{contest.get('slug', '')}\n"
                         upcoming_contests_message += contest_info + "\n"
@@ -169,6 +179,7 @@ async def on_ready():
                 upcoming_contests_message += "No upcoming contests found."
             for channel in channels:
                 await channel.send(upcoming_contests_message)
+
             list_of_timings = [i for i in dict_of_contests.keys()]
             list_of_timings.sort()
             dict_of_contests1 = dict()
